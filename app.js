@@ -1,11 +1,18 @@
 import express, { json } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { MongoClient, ObjectId } from 'mongodb'
-import joi from 'joi'
+import { MongoClient, ObjectId } from 'mongodb';
+import joi from 'joi';
+import dayjs from 'dayjs';
 
 const userSchema = joi.object({
   name: joi.string().required(),
+});
+
+const msgSchema = joi.object({
+  to: joi.string().required(),
+  text: joi.string().required(),
+  type: joi.string().required(),
 });
 
 dotenv.config();
@@ -41,7 +48,7 @@ server.post('/participants', async (req, res) => {
     else
     {
       const participant = {name : user.name, lastStatus: Date.now()};
-      const msg = {from: user.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: 'HH:MM:SS'};
+      const msg = {from: user.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format("HH:mm:ss")};
       db.collection('participants').insertOne(participant);
       db.collection('msgs').insertOne(msg);
       res.sendStatus(201);
@@ -54,6 +61,56 @@ server.post('/participants', async (req, res) => {
   }
 });
 
+server.get('/participants', async (req, res) => {
+  try {
+    const participants = await db.collection('participants').find().toArray();
+    res.send(participants);
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500);
+  }
+});
+
+server.post('/messages', async (req, res) => {
+  const to = req.body.to;
+  const text = req.body.text;
+  const type = req.body.type;
+  const { user } = req.headers;
+  console.log(user);
+  
+  const validation = msgSchema.validate(req.body, { abortEarly: false });
+  if (validation.error) 
+  {
+    const erros = validation.error.details.map((detail) => detail.message);
+    res.status(422).send(erros);
+    return;
+  }
+  if((type === "message") || (type === "private_message")){}
+  else
+  {
+    console.log("salve carai");
+    res.status(422).send("type errado");
+    return;
+  }
+  try {
+    const u = await db.collection('participants').findOne({name : user });
+    if(u) 
+    {
+      const msg = {from: user, to: to, text: text, type: type, time: dayjs().format("HH:mm:ss")};
+      db.collection('msgs').insertOne(msg);
+      return res.sendStatus(201);
+    }
+    else
+    {
+      return res.sendStatus(409);
+    }
+    
+
+  } catch (error) {
+    console.error(error);
+    return res.sendStatus(500);
+  }
+});
 
 server.listen(5000, () => {
   console.log("Rodando em http://localhost:5000");
