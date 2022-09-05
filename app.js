@@ -88,7 +88,6 @@ server.post('/messages', async (req, res) => {
   if((type === "message") || (type === "private_message")){}
   else
   {
-    console.log("salve carai");
     res.status(422).send("type errado");
     return;
   }
@@ -168,7 +167,6 @@ setInterval(async () => {
     {
       if(p[i].lastStatus + limit < now )
       {
-        console.log(p[i]);
         const msg = {from: p[i].name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format("HH:mm:ss")};
         db.collection('msgs').insertOne(msg);
         await db.collection('participants').deleteOne({ _id: new ObjectId(p[i]._id) });  
