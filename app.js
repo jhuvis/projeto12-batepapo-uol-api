@@ -51,7 +51,7 @@ server.post('/participants', async (req, res) => {
       const msg = {from: user.name, to: 'Todos', text: 'entra na sala...', type: 'status', time: dayjs().format("HH:mm:ss")};
       db.collection('participants').insertOne(participant);
       db.collection('msgs').insertOne(msg);
-      res.sendStatus(201);
+      return res.sendStatus(201);
     }
     
 
@@ -76,7 +76,7 @@ server.post('/messages', async (req, res) => {
   const text = req.body.text;
   const type = req.body.type;
   const { user } = req.headers;
-  console.log(user);
+
   
   const validation = msgSchema.validate(req.body, { abortEarly: false });
   if (validation.error) 
@@ -111,6 +111,76 @@ server.post('/messages', async (req, res) => {
     return res.sendStatus(500);
   }
 });
+
+server.get('/messages', async (req, res) => {
+  const { user } = req.headers;
+  const { limit } = req.query;
+ 
+  try {
+    const msgs = await db.collection('msgs').find({ $or: [
+      {from : user}, 
+      {to : "Todos"},
+      {to : user}
+    ]
+    }).toArray();
+
+    if(limit < msgs.length)
+    {
+      const msg = msgs.slice(-limit);
+      return res.send(msg);
+    }
+    else
+    {
+      return res.send(msgs);
+    }
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500);
+  }
+});
+
+server.post('/status', async (req, res) => {
+  const { user } = req.headers;
+  const lastStatus = Date.now();
+  try {
+    const u = await db.collection('participants').findOne({name : user });
+    if(!u)
+    {
+      return res.sendStatus(404);
+    }
+    else
+    {
+      await db.collection('participants').updateOne({ name: user }, { $set: {lastStatus} });
+      res.sendStatus(200);
+    }
+  } catch (err) {
+    console.error(err);
+    res.sendStatus(500);
+  }
+});
+
+setInterval(async () => {
+  const limit = 10000;
+  const now = Date.now();
+  try {
+    const p = await db.collection('participants').find().toArray();
+    for(let i = 0; i < p.length; i++)
+    {
+      if(p[i].lastStatus + limit < now )
+      {
+        console.log(p[i]);
+        const msg = {from: p[i].name, to: 'Todos', text: 'sai da sala...', type: 'status', time: dayjs().format("HH:mm:ss")};
+        db.collection('msgs').insertOne(msg);
+        await db.collection('participants').deleteOne({ _id: new ObjectId(p[i]._id) });  
+      }
+    }
+  } catch (error) {
+    console.error(error);
+    return res.sendStatus(500);
+  }
+  
+}, 15000);
+
 
 server.listen(5000, () => {
   console.log("Rodando em http://localhost:5000");
