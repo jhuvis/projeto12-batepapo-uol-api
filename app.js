@@ -174,7 +174,6 @@ setInterval(async () => {
     }
   } catch (error) {
     console.error(error);
-    return res.sendStatus(500);
   }
   
 }, 15000);
