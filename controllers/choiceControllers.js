@@ -39,7 +39,7 @@ export async function vote (req, res){
                 pollId: new ObjectId(choice.pollId)
             }
         );
-        return res.status(201);
+        return res.status(201).send('voto concluido com sucesso');
 
     } catch (error) {
         console.log(error);
