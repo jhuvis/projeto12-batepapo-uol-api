@@ -16,7 +16,13 @@ export async function getpoll (req, res){
 
 export async function postpoll(req, res){
     try {
-       
+        const diaEx = new Date(res.locals.poll.expireAt);
+        const data = new Date(Date.now());
+        if(diaEx.getTime() < data.getTime())
+        {
+            res.status(403).send('quer uma maquina do tempo pra que as pessoas consigam votar nessa poll?');
+            return;
+        }
         await db.collection("poll").insertOne(res.locals.poll);
         
         return res.status(201).send(res.locals.poll);
